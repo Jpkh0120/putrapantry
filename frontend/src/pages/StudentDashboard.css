@@ -1,0 +1,173 @@
+/* src/pages/StudentDashboard.css */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; }
+
+.dashboard { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* Header */
+.dashboard-header {
+  background: #2e7d32;
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-left h1 { font-size: 1.4rem; }
+.role-badge {
+  background: rgba(255,255,255,0.2);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.header-right { display: flex; align-items: center; gap: 12px; }
+.user-email { font-size: 0.85rem; opacity: 0.85; }
+.logout-btn {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+.logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+/* Tabs */
+.tab-nav {
+  background: white;
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e0e0e0;
+  padding: 0 24px;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 14px 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #666;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.tab-btn:hover { color: #2e7d32; background: #f9f9f9; }
+.tab-btn.active { color: #2e7d32; border-bottom-color: #2e7d32; font-weight: 600; }
+
+/* Content */
+.dashboard-content { flex: 1; padding: 24px; max-width: 1100px; width: 100%; margin: 0 auto; }
+
+/* Cards */
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  margin-bottom: 16px;
+}
+.card h2 { font-size: 1.1rem; color: #333; margin-bottom: 16px; }
+
+/* Stock grid */
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.stock-card {
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  padding: 16px;
+  transition: box-shadow 0.2s;
+}
+.stock-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.stock-card h3 { font-size: 1rem; color: #222; margin-bottom: 8px; }
+.stock-card .category { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.stock-card .quantity { font-size: 1.5rem; font-weight: 700; color: #2e7d32; }
+.stock-card .quantity.low { color: #e65100; }
+.stock-card .expiry { font-size: 0.78rem; color: #888; margin-top: 4px; }
+.stock-card .expiry.soon { color: #e65100; font-weight: 600; }
+.reserve-btn {
+  width: 100%;
+  margin-top: 12px;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+.reserve-btn:hover { background: #1b5e20; }
+.reserve-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+/* Form */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: #555; margin-bottom: 6px; }
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border 0.2s;
+}
+.form-group input:focus, .form-group select:focus { border-color: #2e7d32; }
+.submit-btn {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.submit-btn:hover { background: #1b5e20; }
+.submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+/* Table */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.data-table th { background: #f5f5f5; padding: 10px 14px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e0e0e0; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; color: #333; }
+.data-table tr:hover td { background: #fafafa; }
+
+/* Status badges */
+.badge { padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+.badge-pending { background: #fff3e0; color: #e65100; }
+.badge-collected { background: #e8f5e9; color: #2e7d32; }
+.badge-cancelled { background: #fce4ec; color: #c62828; }
+
+/* Chatbot */
+.chatbot-container { display: flex; flex-direction: column; height: 500px; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px; background: #f9f9f9; border-radius: 8px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+.chat-msg { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 0.88rem; line-height: 1.5; }
+.chat-msg.user { background: #2e7d32; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+.chat-msg.bot { background: white; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.chat-msg.bot.loading { color: #999; font-style: italic; }
+.chat-input-row { display: flex; gap: 8px; }
+.chat-input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; outline: none; }
+.chat-input:focus { border-color: #2e7d32; }
+.chat-send-btn { background: #2e7d32; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+.chat-send-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+/* Alerts */
+.alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 0.88rem; }
+.alert-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.alert-error { background: #fce4ec; color: #c62828; border: 1px solid #ef9a9a; }
+.alert-info { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+
+/* Loading */
+.loading-spinner { text-align: center; padding: 40px; color: #888; font-size: 0.9rem; }
+.empty-state { text-align: center; padding: 40px; color: #aaa; }
+.empty-state p { font-size: 1rem; margin-top: 8px; }
