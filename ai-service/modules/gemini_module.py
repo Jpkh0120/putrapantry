@@ -17,16 +17,35 @@ def _get_client():
 
 def _chat(system_prompt: str, user_prompt: str) -> str:
     client = _get_client()
-    response = client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user',   'content': user_prompt},
-        ],
-        max_tokens=512,
-        temperature=0.7,
-    )
-    return response.choices[0].message.content.strip()
+    try:
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user',   'content': user_prompt},
+            ],
+            max_tokens=512,
+            temperature=0.7,
+        )
+        # Debug: print response structure for troubleshooting
+        try:
+            print('DEBUG: groq response:', repr(response))
+        except Exception:
+            pass
+
+        # Attempt to read common response fields safely
+        try:
+            return response.choices[0].message.content.strip()
+        except Exception:
+            # Fallback: try alternative shapes
+            try:
+                return response['choices'][0]['message']['content'].strip()
+            except Exception as e:
+                print('ERROR: Unexpected groq response shape:', repr(response), 'err:', e)
+                raise
+    except Exception as e:
+        print('ERROR: groq _chat failed:', repr(e))
+        raise
 
 
 def _get_current_stock_summary():
