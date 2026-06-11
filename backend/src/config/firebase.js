@@ -6,11 +6,20 @@ let auth;
 
 function initializeFirebase() {
   if (admin.apps.length === 0) {
-    const credentialsPath = path.resolve(
-      process.env.FIREBASE_CREDENTIALS_PATH || './src/config/serviceAccountKey.json'
-    );
+    let serviceAccount;
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      try {
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      } catch (err) {
+        throw new Error('FIREBASE_SERVICE_ACCOUNT contains invalid JSON');
+      }
+    } else {
+      const credentialsPath = path.resolve(
+        process.env.FIREBASE_CREDENTIALS_PATH || './src/config/serviceAccountKey.json'
+      );
 
-    const serviceAccount = require(credentialsPath);
+      serviceAccount = require(credentialsPath);
+    }
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
