@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import './AdminDashboard.css';
+import './Admindashboard.css';
 import ManageReservations from '../components/admin/ManageReservations';
 import ManageUsers from '../components/admin/ManageUsers';
 import RegressionSimulator from '../components/admin/RegressionSimulator';
 
-const AI_BASE_URL = 'http://localhost:8000';
+const AI_BASE_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000';
 const TABS = ['Forecast', 'Alerts', 'Inventory', 'Approvals', 'Users', 'Chatbot'];
 const CATEGORIES = ['Grains & Rice', 'Canned Goods', 'Dairy', 'Fresh Produce', 'Protein', 'Beverages', 'Snacks', 'Other'];
 

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
-const AI_BASE_URL = 'http://localhost:8000';
+const AI_BASE_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000';
 
 const SUGGESTED_QUESTIONS = [
   "What food is available today?",
