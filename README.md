@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # PutraPantry 🥗
 
 A smart food bank management system for UPM students and admins.
@@ -138,3 +139,6 @@ cd ai-service && source venv/bin/activate && python app.py
 # Terminal 3
 cd frontend && npm run dev
 ```
+=======
+# putrapantry
+>>>>>>> 0793fca47f4aecb6ba89768b01211fd00dc8ec2b
