@@ -5,7 +5,9 @@ from modules.gemini_module import chatbot_query, get_restock_recommendations
 
 ai_bp = Blueprint('ai', __name__)
 
-
+# =========================================================================
+# 1. GET /ai/expiry-alerts — Rule-based low stock & expiration system checks
+# =========================================================================
 @ai_bp.route('/expiry-alerts', methods=['GET'])
 def expiry_alerts():
     try:
@@ -14,16 +16,21 @@ def expiry_alerts():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
+# =========================================================================
+# 2. GET /ai/demand-forecast — Live Scikit-Learn Regression Forecasting
+# =========================================================================
 @ai_bp.route('/demand-forecast', methods=['GET'])
 def demand_forecast():
     try:
+        # Calls the updated module that safely joins real item names onto the labels
         result = get_demand_forecast()
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
+# =========================================================================
+# 3. GET /ai/restock-suggestions — Hybrid Regression & GenAI Advice
+# =========================================================================
 @ai_bp.route('/restock-suggestions', methods=['GET'])
 def restock_suggestions():
     try:
@@ -36,19 +43,24 @@ def restock_suggestions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
+# =========================================================================
+# 4. POST /ai/chatbot — Conversational Assistant with Role-Based Access
+# =========================================================================
 @ai_bp.route('/chatbot', methods=['POST'])
 def chatbot():
-    data = request.get_json()
+    # Gracefully catch missing or non-JSON payloads to prevent runtime crashes
+    data = request.get_json(silent=True) or {}
+    
     query = data.get('query', '').strip()
     student_id = data.get('studentId')
-    role = data.get('role', 'student')  # 👈 add this
+    role = data.get('role', 'student')  
 
     if not query:
-        return jsonify({'error': 'query is required'}), 400
+        return jsonify({'error': 'query field is required'}), 400
 
     try:
-        result = chatbot_query(query, student_id, role)  # 👈 pass role
+        # Passes the contextual metadata down to your LLM orchestration function
+        result = chatbot_query(query, student_id, role)  
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

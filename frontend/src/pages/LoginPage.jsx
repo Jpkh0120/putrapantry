@@ -1,4 +1,3 @@
-// src/pages/LoginPage.jsx
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
-    e.preventDefault(); // Prevents browser page refresh — no need to swap <form> for <div>
+    e.preventDefault(); // Prevents browser page refresh
 
     if (!email.trim() || !password) {
       setError('Please enter both your email and password.');
@@ -32,7 +31,10 @@ export default function LoginPage() {
       const code = err.code || err.message || '';
       let message = 'Invalid email or password.';
 
-      if (code.includes('user-not-found') || code.includes('invalid-credential')) {
+      // 🌟 FIXED: Added explicit handler to intercept Firebase account suspension codes
+      if (code.includes('user-disabled')) {
+        message = '❌ Access Denied: This student user account has been suspended by an administrator.';
+      } else if (code.includes('user-not-found') || code.includes('invalid-credential')) {
         message = 'No account found with this email or password combination.';
       } else if (code.includes('wrong-password')) {
         message = 'Incorrect password. Please try again.';
@@ -60,7 +62,6 @@ export default function LoginPage() {
 
         {error && <div className="alert alert-error">{error}</div>}
 
-        {/* Proper <form> with onSubmit — handles both button click AND Enter key natively */}
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Email Address</label>
@@ -84,7 +85,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* type="submit" triggers onSubmit — no onClick needed */}
           <button type="submit" className="submit-btn" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>

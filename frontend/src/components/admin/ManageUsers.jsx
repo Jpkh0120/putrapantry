@@ -10,6 +10,7 @@ export default function ManageUsers() {
     fetchStudents();
   }, []);
 
+  // 🌟 FIXED: Hits /api/admin/students directly (matching server.js mount point)
   async function fetchStudents() {
     try {
       setLoading(true);
@@ -23,6 +24,7 @@ export default function ManageUsers() {
     }
   }
 
+  // 🌟 FIXED: Toggles the isVerified flag on the backend
   async function handleToggleVerify(uid, currentIsVerified) {
     const nextVerifyState = !currentIsVerified;
     if (!window.confirm(`Change student verification status to ${nextVerifyState ? 'VERIFIED' : 'PENDING'}?`)) return;
@@ -30,12 +32,13 @@ export default function ManageUsers() {
     try {
       await api.put(`/api/admin/verify/${uid}`, { isVerified: nextVerifyState });
       alert('Verification status updated successfully!');
-      fetchStudents(); 
+      fetchStudents(); // Refresh data grid
     } catch (err) {
       alert('Failed to update student verification status.');
     }
   }
 
+  // 🌟 FIXED: Suspends or reactivates login credentials and Firestore status
   async function handleToggleSuspend(uid, currentStatus) {
     const isCurrentlySuspended = currentStatus === 'suspended';
     const nextSuspendState = !isCurrentlySuspended;
@@ -55,6 +58,7 @@ export default function ManageUsers() {
     }
   }
 
+  // 🌟 FIXED: Completely purges the student from Auth and Firestore
   async function handleDeleteStudent(uid) {
     if (!window.confirm('CRITICAL ACTION: Permanently delete this student from both authentication credentials and database profiles? This cannot be undone.')) return;
 
@@ -69,6 +73,8 @@ export default function ManageUsers() {
 
   return (
     <div style={{ maxWidth: '950px', margin: '30px auto', padding: '20px', fontFamily: 'sans-serif' }}>
+      
+      {/* HEADER SECTION */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h2 style={{ margin: 0, color: '#1b5e20' }}>User Account Management</h2>
@@ -89,6 +95,7 @@ export default function ManageUsers() {
         </div>
       )}
 
+      {/* DATA TABLE CONTAINER */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#666', fontWeight: '500' }}>Loading student account profiles...</div>
       ) : students.length === 0 ? (
@@ -103,7 +110,7 @@ export default function ManageUsers() {
                 <th style={{ padding: '14px 16px' }}>Student Name</th>
                 <th style={{ padding: '14px 16px' }}>Email Address</th>
                 <th style={{ padding: '14px 16px' }}>Verification</th>
-                <th style={{ padding: '14px 16px' }}>Status</th>
+                <th style={{ padding: '14px 16px' }}>Status Status</th>
                 <th style={{ padding: '14px 16px', textAlign: 'right' }}>Management Actions</th>
               </tr>
             </thead>
@@ -116,6 +123,7 @@ export default function ManageUsers() {
                     <td style={{ padding: '14px 16px', fontWeight: '600', color: '#1a202c' }}>{student.name || '—'}</td>
                     <td style={{ padding: '14px 16px', color: '#4a5568' }}>{student.email}</td>
                     
+                    {/* VERIFICATION COLUMN */}
                     <td style={{ padding: '14px 16px' }}>
                       <span style={{
                         padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold',
@@ -127,6 +135,7 @@ export default function ManageUsers() {
                       </span>
                     </td>
 
+                    {/* STATUS STATUS COLUMN */}
                     <td style={{ padding: '14px 16px' }}>
                       <span style={{
                         padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold',
@@ -137,8 +146,11 @@ export default function ManageUsers() {
                       </span>
                     </td>
 
+                    {/* ACTIONS BUTTON GROUP */}
                     <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        
+                        {/* 1. Verify Action Switcher */}
                         <button
                           onClick={() => handleToggleVerify(student.uid, student.isVerified)}
                           style={{
@@ -150,6 +162,7 @@ export default function ManageUsers() {
                           {student.isVerified ? 'Unverify' : 'Verify'}
                         </button>
 
+                        {/* 2. Suspend/Unsuspend Toggle Action */}
                         <button
                           onClick={() => handleToggleSuspend(student.uid, student.status)}
                           style={{
@@ -161,6 +174,7 @@ export default function ManageUsers() {
                           {isSuspended ? 'Reactivate' : 'Suspend'}
                         </button>
 
+                        {/* 3. Hard Purge Delete Action */}
                         <button
                           onClick={() => handleDeleteStudent(student.uid)}
                           style={{
@@ -170,6 +184,7 @@ export default function ManageUsers() {
                         >
                           Delete
                         </button>
+
                       </div>
                     </td>
                   </tr>

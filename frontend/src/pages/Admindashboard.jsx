@@ -3,9 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './AdminDashboard.css';
 import ManageReservations from '../components/admin/ManageReservations';
+import ManageUsers from '../components/admin/ManageUsers';
+import RegressionSimulator from '../components/admin/RegressionSimulator';
 
 const AI_BASE_URL = 'http://localhost:8000';
-const TABS = ['Forecast', 'Alerts', 'Inventory', 'Approvals', 'Chatbot'];
+const TABS = ['Forecast', 'Alerts', 'Inventory', 'Approvals', 'Users', 'Chatbot'];
 const CATEGORIES = ['Grains & Rice', 'Canned Goods', 'Dairy', 'Fresh Produce', 'Protein', 'Beverages', 'Snacks', 'Other'];
 
 const TAB_META = {
@@ -13,6 +15,7 @@ const TAB_META = {
   Alerts:    { title: 'Inventory Alerts',            sub: 'Rule-based checks for expiry and low stock' },
   Inventory: { title: 'Inventory Management',        sub: 'Add, edit, and remove items from the food bank' },
   Approvals: { title: 'Student Pickup Approvals',    sub: 'Verify and sign off items handed over to students' },
+  Users:     { title: 'User Account Management',     sub: 'Verify, suspend, reactivate, or delete student profiles' },
   Chatbot:   { title: 'AI Inventory Advisor',        sub: 'Get smart restocking recommendations powered by AI' },
 };
 
@@ -71,6 +74,7 @@ function ForecastTab() {
           </div>
         ))}
       </div>
+      <RegressionSimulator liveForecasts={data.forecasts} />
     </div>
   );
 }
@@ -263,27 +267,27 @@ function ChatbotTab() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // 🌟 FIXED & CONSOLIDATED CHAT CONTEXT PIPELINE Handler
   async function sendMessage(text) {
     const query = text ?? input.trim();
-    if (!query || loading) return;
+    if (!query || !query.trim() || loading) return;
 
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: query }]);
-    setLoading(true);
+    setLoading(true); 
 
     try {
-      const res = await fetch(`${AI_BASE_URL}/ai/chatbot`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, role: 'admin' }),
+      // Direct connection to your express security orchestration layer
+      const res = await api.post('/api/ai/chat', { 
+        query, 
+        role: 'admin' 
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: 'bot', text: data.reply || 'No response.' }]);
+      
+      setMessages(prev => [...prev, { role: 'bot', text: res.data.reply || 'No response.' }]);
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'bot', text: "Couldn't connect to AI service. Make sure it's running on port 8000." }]);
+      setMessages(prev => [...prev, { role: 'bot', text: "Couldn't connect to AI service. Please confirm backend status settings." }]);
     } finally {
-      setLoading(false);
+      setLoading(false); 
     }
   }
 
@@ -293,8 +297,6 @@ function ChatbotTab() {
 
   return (
     <div style={{ maxWidth: '750px', display: 'flex', flexDirection: 'column', height: '72vh' }}>
-
-      {/* Suggestion chips — only show at start */}
       {messages.length === 1 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
           {ADMIN_SUGGESTIONS.map(q => (
@@ -306,7 +308,6 @@ function ChatbotTab() {
         </div>
       )}
 
-      {/* Message feed */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', border: '1px solid #e0e0e0', borderRadius: '8px', background: '#fafafa', marginBottom: '12px' }}>
         {messages.map((msg, idx) => (
           <div key={idx} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
@@ -330,7 +331,6 @@ function ChatbotTab() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input row */}
       <div style={{ display: 'flex', gap: '8px' }}>
         <input
           value={input}
@@ -379,6 +379,7 @@ export default function AdminDashboard() {
             {tab === 'Alerts'    && '🔔 '}
             {tab === 'Inventory' && '📦 '}
             {tab === 'Approvals' && '✅ '}
+            {tab === 'Users'     && '👥 '}
             {tab === 'Chatbot'   && '🤖 '}
             {tab}
           </button>
@@ -395,6 +396,7 @@ export default function AdminDashboard() {
         {activeTab === 'Alerts'    && <AlertsTab />}
         {activeTab === 'Inventory' && <InventoryTab />}
         {activeTab === 'Approvals' && <ManageReservations />}
+        {activeTab === 'Users'     && <ManageUsers />} 
         {activeTab === 'Chatbot'   && <ChatbotTab />}
       </main>
     </div>

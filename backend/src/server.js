@@ -9,6 +9,7 @@ const inventoryRoutes = require('./routes/inventory');
 const reservationRoutes = require('./routes/reservation');
 const studentRoutes = require('./routes/student');
 const aiRoutes = require('./routes/ai');
+const adminUsersRoutes = require('./routes/adminUsers'); 
 
 // Initialize Firebase Admin SDK
 initializeFirebase();
@@ -33,6 +34,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/reservation', reservationRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/admin', adminUsersRoutes); 
 
 // Global error handler
 app.use((err, req, res, next) => {

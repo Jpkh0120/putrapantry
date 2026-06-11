@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from 'react';
 import {
   signInWithEmailAndPassword,
@@ -20,6 +19,7 @@ export function AuthProvider({ children }) {
 
   const [userRole, setUserRole] = useState(() => localStorage.getItem('userRole') || null);
   const [userName, setUserName] = useState(() => localStorage.getItem('userName') || null);
+  const [isVerified, setIsVerified] = useState(() => localStorage.getItem('isVerified') === 'true');
   const [loading, setLoading]   = useState(true);
 
   // Register new user
@@ -35,11 +35,13 @@ export function AuthProvider({ children }) {
 
     setUserName(name);
     setUserRole(role);
+    setIsVerified(false); 
     setCurrentUser(credential.user);
 
     localStorage.setItem('currentUserUid', credential.user.uid);
     localStorage.setItem('userRole', role);
     localStorage.setItem('userName', name);
+    localStorage.setItem('isVerified', 'false');
 
     return credential.user;
   }
@@ -66,9 +68,11 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
     setUserRole(null);
     setUserName(null);
+    setIsVerified(false);
     localStorage.removeItem('currentUserUid');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
+    localStorage.removeItem('isVerified');
 
     return signOut(auth);
   }
@@ -89,25 +93,35 @@ export function AuthProvider({ children }) {
           if (res.data) {
             const role = res.data.role ?? 'student';
             const name = res.data.name || 'Student';
+            const verified = res.data.isVerified ?? false; 
+
             setUserRole(role);
             setUserName(name);
+            setIsVerified(verified); 
+            
             localStorage.setItem('userRole', role);
             localStorage.setItem('userName', name);
+            localStorage.setItem('isVerified', String(verified));
           }
         } catch (err) {
           console.error("Backend connection error, using local fallback credentials:", err.message);
           const fallbackRole = localStorage.getItem('userRole') || 'student';
           const fallbackName = localStorage.getItem('userName') || (user.email ? user.email.split('@')[0] : 'Student');
+          const fallbackVerified = localStorage.getItem('isVerified') === 'true';
+          
           setUserRole(fallbackRole);
           setUserName(fallbackName);
+          setIsVerified(fallbackVerified);
         }
       } else {
         setCurrentUser(null);
         setUserRole(null);
         setUserName(null);
+        setIsVerified(false);
         localStorage.removeItem('currentUserUid');
         localStorage.removeItem('userRole');
         localStorage.removeItem('userName');
+        localStorage.removeItem('isVerified');
       }
       setLoading(false);
     });
@@ -115,7 +129,7 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  const value = { currentUser, userRole, userName, login, register, logout, loading };
+  const value = { currentUser, userRole, userName, isVerified, login, register, logout, loading };
 
   return (
     <AuthContext.Provider value={value}>
