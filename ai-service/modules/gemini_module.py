@@ -42,21 +42,34 @@ def _get_current_stock_summary():
     return '\n'.join(items) if items else 'No items currently in stock.'
 
 
-def chatbot_query(query: str, student_id: str = None):
+def chatbot_query(query: str, student_id: str = None, role: str = 'student'):
     stock_summary = _get_current_stock_summary()
 
-    system_prompt = (
-        "You are PutraPantry Assistant, a helpful food bank chatbot at UPM "
-        "(Universiti Putra Malaysia). Your role is to help university students "
-        "find suitable food from the food bank. Be friendly, concise, and helpful. "
-        "Only recommend items that are currently in stock. "
-        "Respect any dietary restrictions or preferences the student mentions. "
-        "Keep responses under 150 words."
-    )
-    user_prompt = (
-        f"Current available stock:\n{stock_summary}\n\n"
-        f"Student query: {query}"
-    )
+    if role == 'admin':
+        system_prompt = (
+            "You are a smart inventory advisor for PutraPantry food bank at UPM. "
+            "Help the admin make informed restocking and inventory decisions. "
+            "Highlight low stock items, expiring items, and category gaps. "
+            "Be data-driven, concise, and actionable. "
+            "Keep responses under 200 words."
+        )
+        user_prompt = (
+            f"Current inventory:\n{stock_summary}\n\n"
+            f"Admin query: {query}"
+        )
+    else:
+        system_prompt = (
+            "You are PutraPantry Assistant, a helpful food bank chatbot at UPM "
+            "(Universiti Putra Malaysia). Your role is to help university students "
+            "find suitable food from the food bank. Be friendly, concise, and helpful. "
+            "Only recommend items that are currently in stock. "
+            "Respect any dietary restrictions or preferences the student mentions. "
+            "Keep responses under 150 words."
+        )
+        user_prompt = (
+            f"Current available stock:\n{stock_summary}\n\n"
+            f"Student query: {query}"
+        )
 
     try:
         reply = _chat(system_prompt, user_prompt)

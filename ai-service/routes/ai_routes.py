@@ -42,12 +42,13 @@ def chatbot():
     data = request.get_json()
     query = data.get('query', '').strip()
     student_id = data.get('studentId')
+    role = data.get('role', 'student')  # 👈 add this
 
     if not query:
         return jsonify({'error': 'query is required'}), 400
 
     try:
-        result = chatbot_query(query, student_id)
+        result = chatbot_query(query, student_id, role)  # 👈 pass role
         return jsonify(result)
     except Exception as e:
         print(f"\n❌ CHATBOT CRASHED: {str(e)}\n")  # <-- Add this line!

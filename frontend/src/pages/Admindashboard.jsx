@@ -1,15 +1,22 @@
-// src/pages/AdminDashboard.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './AdminDashboard.css';
+import ManageReservations from '../components/admin/ManageReservations';
 
 const AI_BASE_URL = 'http://localhost:8000';
-const TABS = ['Forecast', 'Alerts', 'Inventory'];
+const TABS = ['Forecast', 'Alerts', 'Inventory', 'Approvals', 'Chatbot'];
 const CATEGORIES = ['Grains & Rice', 'Canned Goods', 'Dairy', 'Fresh Produce', 'Protein', 'Beverages', 'Snacks', 'Other'];
 
-// ── Demand Forecast Tab ──────────────────────────────────────────────────────
+const TAB_META = {
+  Forecast:  { title: '7-Day Demand Forecast',      sub: 'Linear regression predictions based on pickup history' },
+  Alerts:    { title: 'Inventory Alerts',            sub: 'Rule-based checks for expiry and low stock' },
+  Inventory: { title: 'Inventory Management',        sub: 'Add, edit, and remove items from the food bank' },
+  Approvals: { title: 'Student Pickup Approvals',    sub: 'Verify and sign off items handed over to students' },
+  Chatbot:   { title: 'AI Inventory Advisor',        sub: 'Get smart restocking recommendations powered by AI' },
+};
 
+// ── Forecast Tab ─────────────────────────────────────────────────────────────
 function ForecastTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +43,6 @@ function ForecastTab() {
         {isSynthetic && <span className="meta-badge warning">Synthetic data — add real pickups to train</span>}
       </div>
       <p className="forecast-note">{data.note}</p>
-
       <div className="forecast-grid">
         {data.forecasts.map((item, i) => (
           <div key={i} className="forecast-card">
@@ -69,8 +75,7 @@ function ForecastTab() {
   );
 }
 
-// ── Alerts Tab ───────────────────────────────────────────────────────────────
-
+// ── Alerts Tab ────────────────────────────────────────────────────────────────
 function AlertsTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,12 +96,9 @@ function AlertsTab() {
     <div className="alerts-wrapper">
       <div className="admin-card">
         <h3 className="alerts-section-title">
-          Expiring Soon
-          <span className="alert-count expiry">{data.expiryAlerts.length}</span>
+          Expiring Soon <span className="alert-count expiry">{data.expiryAlerts.length}</span>
         </h3>
-        {data.expiryAlerts.length === 0 ? (
-          <p className="admin-empty">No items expiring within the warning window.</p>
-        ) : (
+        {data.expiryAlerts.length === 0 ? <p className="admin-empty">No items expiring within the warning window.</p> : (
           <table className="admin-table">
             <thead><tr><th>Item</th><th>Expiry Date</th><th>Days Left</th><th>Qty</th></tr></thead>
             <tbody>
@@ -112,15 +114,11 @@ function AlertsTab() {
           </table>
         )}
       </div>
-
       <div className="admin-card">
         <h3 className="alerts-section-title">
-          Low Stock
-          <span className="alert-count low">{data.lowStockAlerts.length}</span>
+          Low Stock <span className="alert-count low">{data.lowStockAlerts.length}</span>
         </h3>
-        {data.lowStockAlerts.length === 0 ? (
-          <p className="admin-empty">All items are above the minimum threshold.</p>
-        ) : (
+        {data.lowStockAlerts.length === 0 ? <p className="admin-empty">All items are above the minimum threshold.</p> : (
           <table className="admin-table">
             <thead><tr><th>Item</th><th>Current Qty</th><th>Threshold</th><th>Status</th></tr></thead>
             <tbody>
@@ -140,8 +138,7 @@ function AlertsTab() {
   );
 }
 
-// ── Inventory Tab ────────────────────────────────────────────────────────────
-
+// ── Inventory Tab ─────────────────────────────────────────────────────────────
 const EMPTY_FORM = { itemName: '', quantity: '', expiryDate: '', category: '' };
 
 function InventoryTab() {
@@ -160,40 +157,24 @@ function InventoryTab() {
 
   async function loadInventory() {
     setLoading(true);
-    try {
-      const res = await api.get('/api/inventory');
-      setItems(res.data);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    try { const res = await api.get('/api/inventory'); setItems(res.data); }
+    catch (e) { setError(e.message); }
+    finally { setLoading(false); }
   }
 
   useEffect(() => { loadInventory(); }, []);
 
   function handleEdit(item) {
     setEditId(item.id);
-    setForm({
-      itemName: item.itemName,
-      quantity: item.quantity,
-      expiryDate: item.expiryDate?.slice(0, 10) || '',
-      category: item.category,
-    });
+    setForm({ itemName: item.itemName, quantity: item.quantity, expiryDate: item.expiryDate?.slice(0, 10) || '', category: item.category });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function handleCancel() {
-    setEditId(null);
-    setForm(EMPTY_FORM);
-  }
+  function handleCancel() { setEditId(null); setForm(EMPTY_FORM); }
 
   async function handleSubmit() {
     const { itemName, quantity, expiryDate, category } = form;
-    if (!itemName || quantity === '' || !expiryDate || !category) {
-      showFeedback('All fields are required.', 'error');
-      return;
-    }
+    if (!itemName || quantity === '' || !expiryDate || !category) { showFeedback('All fields are required.', 'error'); return; }
     setSubmitting(true);
     try {
       if (editId) {
@@ -203,135 +184,54 @@ function InventoryTab() {
         await api.post('/api/inventory/add', { ...form, quantity: Number(quantity) });
         showFeedback('Item added successfully.');
       }
-      setForm(EMPTY_FORM);
-      setEditId(null);
-      await loadInventory();
-    } catch (e) {
-      showFeedback(e.response?.data?.error || e.message, 'error');
-    } finally {
-      setSubmitting(false);
-    }
+      setForm(EMPTY_FORM); setEditId(null); await loadInventory();
+    } catch (e) { showFeedback(e.response?.data?.error || e.message, 'error'); }
+    finally { setSubmitting(false); }
   }
 
   async function handleDelete(id) {
     if (!window.confirm('Delete this item from inventory?')) return;
-    try {
-      await api.delete(`/api/inventory/delete/${id}`);
-      showFeedback('Item deleted.');
-      await loadInventory();
-    } catch (e) {
-      showFeedback(e.response?.data?.error || e.message, 'error');
-    }
+    try { await api.delete(`/api/inventory/delete/${id}`); showFeedback('Item deleted.'); await loadInventory(); }
+    catch (e) { showFeedback(e.response?.data?.error || e.message, 'error'); }
   }
 
   return (
     <div>
-      {feedback && (
-        <div className={`inv-feedback ${feedback.type}`}>{feedback.msg}</div>
-      )}
-
-      {/* Add / Edit Form */}
+      {feedback && <div className={`inv-feedback ${feedback.type}`}>{feedback.msg}</div>}
       <div className="admin-card inv-form-card">
         <h3 className="inv-form-title">{editId ? 'Edit Item' : 'Add New Item'}</h3>
         <div className="inv-form-grid">
-          <div className="inv-field">
-            <label>Item Name</label>
-            <input
-              type="text"
-              placeholder="e.g. Jasmine Rice"
-              value={form.itemName}
-              onChange={e => setForm(f => ({ ...f, itemName: e.target.value }))}
-            />
-          </div>
-          <div className="inv-field">
-            <label>Quantity</label>
-            <input
-              type="number"
-              min="0"
-              placeholder="e.g. 50"
-              value={form.quantity}
-              onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
-            />
-          </div>
-          <div className="inv-field">
-            <label>Expiry Date</label>
-            <input
-              type="date"
-              value={form.expiryDate}
-              onChange={e => setForm(f => ({ ...f, expiryDate: e.target.value }))}
-            />
-          </div>
+          <div className="inv-field"><label>Item Name</label><input type="text" placeholder="e.g. Jasmine Rice" value={form.itemName} onChange={e => setForm(f => ({ ...f, itemName: e.target.value }))} /></div>
+          <div className="inv-field"><label>Quantity</label><input type="number" min="0" placeholder="e.g. 50" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} /></div>
+          <div className="inv-field"><label>Expiry Date</label><input type="date" value={form.expiryDate} onChange={e => setForm(f => ({ ...f, expiryDate: e.target.value }))} /></div>
           <div className="inv-field">
             <label>Category</label>
-            <select
-              value={form.category}
-              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-            >
+            <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
               <option value="">Select category...</option>
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
         </div>
         <div className="inv-form-actions">
-          <button className="inv-submit-btn" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Saving...' : editId ? 'Update Item' : 'Add Item'}
-          </button>
-          {editId && (
-            <button className="inv-cancel-btn" onClick={handleCancel}>Cancel</button>
-          )}
+          <button className="inv-submit-btn" onClick={handleSubmit} disabled={submitting}>{submitting ? 'Saving...' : editId ? 'Update Item' : 'Add Item'}</button>
+          {editId && <button className="inv-cancel-btn" onClick={handleCancel}>Cancel</button>}
         </div>
       </div>
-
-      {/* Inventory Table */}
       <div className="admin-card">
-        <h3 className="alerts-section-title">
-          Current Inventory
-          <span className="meta-badge" style={{ marginLeft: 8 }}>{items.length} items</span>
-        </h3>
-
-        {loading ? (
-          <div className="admin-loading">Loading inventory...</div>
-        ) : error ? (
-          <div className="admin-error">{error}</div>
-        ) : items.length === 0 ? (
-          <p className="admin-empty">No items in inventory yet. Add one above.</p>
-        ) : (
+        <h3 className="alerts-section-title">Current Inventory <span className="meta-badge" style={{ marginLeft: 8 }}>{items.length} items</span></h3>
+        {loading ? <div className="admin-loading">Loading inventory...</div> : error ? <div className="admin-error">{error}</div> : items.length === 0 ? <p className="admin-empty">No items yet.</p> : (
           <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Item Name</th>
-                <th>Category</th>
-                <th>Quantity</th>
-                <th>Expiry Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Item Name</th><th>Category</th><th>Quantity</th><th>Expiry Date</th><th>Actions</th></tr></thead>
             <tbody>
               {items.map(item => {
-                const daysLeft = item.expiryDate
-                  ? Math.ceil((new Date(item.expiryDate) - new Date()) / 86400000)
-                  : null;
+                const daysLeft = item.expiryDate ? Math.ceil((new Date(item.expiryDate) - new Date()) / 86400000) : null;
                 return (
                   <tr key={item.id}>
                     <td><strong>{item.itemName}</strong></td>
                     <td>{item.category}</td>
-                    <td>
-                      <span className={item.quantity < 10 ? 'qty-low' : 'qty-ok'}>
-                        {item.quantity}
-                      </span>
-                    </td>
-                    <td>
-                      {item.expiryDate?.slice(0, 10)}
-                      {daysLeft !== null && daysLeft <= 3 && (
-                        <span className={`days-badge ${daysLeft <= 1 ? 'critical' : 'warning'}`} style={{ marginLeft: 6 }}>
-                          {daysLeft}d
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <button className="inv-edit-btn" onClick={() => handleEdit(item)}>Edit</button>
-                      <button className="inv-delete-btn" onClick={() => handleDelete(item.id)}>Delete</button>
-                    </td>
+                    <td><span className={item.quantity < 10 ? 'qty-low' : 'qty-ok'}>{item.quantity}</span></td>
+                    <td>{item.expiryDate?.slice(0, 10)}{daysLeft !== null && daysLeft <= 3 && <span className={`days-badge ${daysLeft <= 1 ? 'critical' : 'warning'}`} style={{ marginLeft: 6 }}>{daysLeft}d</span>}</td>
+                    <td><button className="inv-edit-btn" onClick={() => handleEdit(item)}>Edit</button><button className="inv-delete-btn" onClick={() => handleDelete(item.id)}>Delete</button></td>
                   </tr>
                 );
               })}
@@ -343,8 +243,113 @@ function InventoryTab() {
   );
 }
 
-// ── Admin Dashboard Shell ─────────────────────────────────────────────────────
+// ── Chatbot Tab ───────────────────────────────────────────────────────────────
+const ADMIN_SUGGESTIONS = [
+  "What items should I restock this week?",
+  "Which items are expiring soon?",
+  "What categories are running low?",
+  "Give me a full inventory summary.",
+];
 
+function ChatbotTab() {
+  const [messages, setMessages] = useState([
+    { role: 'bot', text: "Hi! I'm your inventory advisor 📦 Ask me about restocking, demand trends, or which items need attention." }
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  async function sendMessage(text) {
+    const query = text ?? input.trim();
+    if (!query || loading) return;
+
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: query }]);
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${AI_BASE_URL}/ai/chatbot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, role: 'admin' }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: 'bot', text: data.reply || 'No response.' }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'bot', text: "Couldn't connect to AI service. Make sure it's running on port 8000." }]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  return (
+    <div style={{ maxWidth: '750px', display: 'flex', flexDirection: 'column', height: '72vh' }}>
+
+      {/* Suggestion chips — only show at start */}
+      {messages.length === 1 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+          {ADMIN_SUGGESTIONS.map(q => (
+            <button key={q} onClick={() => sendMessage(q)} disabled={loading}
+              style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid #1b5e20', background: '#fff', color: '#1b5e20', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}>
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Message feed */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', border: '1px solid #e0e0e0', borderRadius: '8px', background: '#fafafa', marginBottom: '12px' }}>
+        {messages.map((msg, idx) => (
+          <div key={idx} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{
+              maxWidth: '75%', padding: '10px 14px',
+              borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+              background: msg.role === 'user' ? '#1b5e20' : '#fff',
+              color: msg.role === 'user' ? '#fff' : '#1a1a1a',
+              border: msg.role === 'bot' ? '1px solid #e0e0e0' : 'none',
+              fontSize: '0.95rem', lineHeight: '1.5', whiteSpace: 'pre-wrap'
+            }}>
+              {msg.text}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <div style={{ padding: '10px 14px', borderRadius: '16px 16px 16px 4px', background: '#fff', border: '1px solid #e0e0e0', color: '#999', fontSize: '0.9rem' }}>Thinking...</div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input row */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="e.g. What items should I restock this week?"
+          disabled={loading}
+          style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '0.95rem', outline: 'none' }}
+        />
+        <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
+          style={{ padding: '12px 20px', borderRadius: '8px', background: '#1b5e20', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.95rem', opacity: loading || !input.trim() ? 0.6 : 1 }}>
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin Dashboard Shell ─────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { userName, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('Inventory');
@@ -369,14 +374,12 @@ export default function AdminDashboard() {
 
       <nav className="admin-tab-nav">
         {TABS.map(tab => (
-          <button
-            key={tab}
-            className={`admin-tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
+          <button key={tab} className={`admin-tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
             {tab === 'Forecast'  && '📈 '}
             {tab === 'Alerts'    && '🔔 '}
             {tab === 'Inventory' && '📦 '}
+            {tab === 'Approvals' && '✅ '}
+            {tab === 'Chatbot'   && '🤖 '}
             {tab}
           </button>
         ))}
@@ -384,21 +387,15 @@ export default function AdminDashboard() {
 
       <main className="admin-content">
         <div className="admin-section-header">
-          <h2>
-            {activeTab === 'Forecast'  && '7-Day Demand Forecast'}
-            {activeTab === 'Alerts'    && 'Inventory Alerts'}
-            {activeTab === 'Inventory' && 'Inventory Management'}
-          </h2>
-          <p className="admin-section-sub">
-            {activeTab === 'Forecast'  && 'Linear regression predictions based on pickup history'}
-            {activeTab === 'Alerts'    && 'Rule-based checks for expiry and low stock'}
-            {activeTab === 'Inventory' && 'Add, edit, and remove items from the food bank'}
-          </p>
+          <h2>{TAB_META[activeTab]?.title}</h2>
+          <p className="admin-section-sub">{TAB_META[activeTab]?.sub}</p>
         </div>
 
         {activeTab === 'Forecast'  && <ForecastTab />}
         {activeTab === 'Alerts'    && <AlertsTab />}
         {activeTab === 'Inventory' && <InventoryTab />}
+        {activeTab === 'Approvals' && <ManageReservations />}
+        {activeTab === 'Chatbot'   && <ChatbotTab />}
       </main>
     </div>
   );
