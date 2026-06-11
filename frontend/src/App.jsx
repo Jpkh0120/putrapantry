@@ -4,9 +4,10 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage    from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import StudentDashboard from './pages/StudentDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 
-// Placeholder dashboard pages — implement in Sprint 2
-function AdminDashboard() { return <h1>Admin Dashboard — Coming in Sprint 2</h1>; }
+
+
 
 function LoadingScreen() {
   return (

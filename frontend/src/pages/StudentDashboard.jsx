@@ -1,10 +1,11 @@
 // src/pages/StudentDashboard.jsx
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import StockView from '../components/student/StockView'; // Your actual working component
+import StockView from '../components/student/StockView';
+import Chatbot from '../components/student/Chatbot'; // ← real chatbot
 import './StudentDashboard.css';
 
-// Temporary inline placeholders for the components you haven't created yet
+// Temporary inline placeholders for components not yet built
 function ReservationForm({ preselectedItem, onSuccess }) {
   return (
     <div className="card">
@@ -34,21 +35,6 @@ function PickupHistory() {
   );
 }
 
-function Chatbot() {
-  return (
-    <div className="card chatbot-container">
-      <h2>🤖 PutraPantry Assistant</h2>
-      <div className="chat-messages">
-        <div className="chat-msg bot">Hi! I am your AI assistant. Ask me anything about today's food distribution or inventory!</div>
-      </div>
-      <div className="chat-input-row">
-        <input type="text" className="chat-input" placeholder="Type a message..." disabled />
-        <button className="chat-send-btn" disabled>Send</button>
-      </div>
-    </div>
-  );
-}
-
 const TABS = ['Stock', 'Reserve', 'History', 'Chatbot'];
 
 export default function StudentDashboard() {
@@ -61,7 +47,7 @@ export default function StudentDashboard() {
       await logout();
       window.location.href = '/login';
     } catch (error) {
-      console.error("Failed to log out", error);
+      console.error('Failed to log out', error);
     }
   }
 
@@ -95,7 +81,7 @@ export default function StudentDashboard() {
               if (tab !== 'Reserve') setSelectedItem(null);
             }}
           >
-            {tab === 'Stock' && '📦 '}
+            {tab === 'Stock'   && '📦 '}
             {tab === 'Reserve' && '📋 '}
             {tab === 'History' && '🕐 '}
             {tab === 'Chatbot' && '🤖 '}
