@@ -50,4 +50,5 @@ def chatbot():
         result = chatbot_query(query, student_id)
         return jsonify(result)
     except Exception as e:
+        print(f"\n❌ CHATBOT CRASHED: {str(e)}\n")  # <-- Add this line!
         return jsonify({'error': str(e)}), 500
