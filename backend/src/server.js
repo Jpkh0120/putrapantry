@@ -17,8 +17,14 @@ initializeFirebase();
 const app = express();
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  process.env.FRONTEND_URL,        // set in Vercel env vars
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());
@@ -28,13 +34,35 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'putrapantry-backend' });
 });
 
+// Root and API index for visibility
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'PutraPantry backend',
+    health: '/health',
+    api_index: '/api',
+  });
+});
+
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    apis: [
+      '/api/auth (POST /register, POST /logout, GET /me)',
+      '/api/inventory (GET, POST /add, PUT /update/:id, DELETE /delete/:id)',
+      '/api/reservation',
+      '/api/student',
+      '/api/ai',
+      '/api/admin'
+    ]
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/reservation', reservationRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/ai', aiRoutes);
-app.use('/api/admin', adminUsersRoutes); 
+app.use('/api/admin', adminUsersRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {
