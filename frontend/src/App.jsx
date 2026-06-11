@@ -5,7 +5,7 @@ import LoginPage    from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/Admindashboard';
-
+import ManageUsers from './components/admin/ManageUsers';
 
 
 

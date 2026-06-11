@@ -3,16 +3,18 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './AdminDashboard.css';
 import ManageReservations from '../components/admin/ManageReservations';
+import ManageUsers from '../components/admin/ManageUsers';
 
 const AI_BASE_URL = 'http://localhost:8000';
-const TABS = ['Forecast', 'Alerts', 'Inventory', 'Approvals', 'Chatbot'];
+const TABS = ['Forecast', 'Alerts', 'Inventory', 'Approvals', 'Users', 'Chatbot'];
 const CATEGORIES = ['Grains & Rice', 'Canned Goods', 'Dairy', 'Fresh Produce', 'Protein', 'Beverages', 'Snacks', 'Other'];
 
 const TAB_META = {
   Forecast:  { title: '7-Day Demand Forecast',      sub: 'Linear regression predictions based on pickup history' },
-  Alerts:    { title: 'Inventory Alerts',            sub: 'Rule-based checks for expiry and low stock' },
+  Alerts:    { title: 'Inventory Alerts',           sub: 'Rule-based checks for expiry and low stock' },
   Inventory: { title: 'Inventory Management',        sub: 'Add, edit, and remove items from the food bank' },
   Approvals: { title: 'Student Pickup Approvals',    sub: 'Verify and sign off items handed over to students' },
+  Users:     { title: 'Student Account Directory',   sub: 'Verify new registration profiles, suspend or purge user data records' },
   Chatbot:   { title: 'AI Inventory Advisor',        sub: 'Get smart restocking recommendations powered by AI' },
 };
 
@@ -379,6 +381,7 @@ export default function AdminDashboard() {
             {tab === 'Alerts'    && '🔔 '}
             {tab === 'Inventory' && '📦 '}
             {tab === 'Approvals' && '✅ '}
+            {tab === 'Users'     && '👥 '}
             {tab === 'Chatbot'   && '🤖 '}
             {tab}
           </button>
@@ -395,6 +398,7 @@ export default function AdminDashboard() {
         {activeTab === 'Alerts'    && <AlertsTab />}
         {activeTab === 'Inventory' && <InventoryTab />}
         {activeTab === 'Approvals' && <ManageReservations />}
+        {activeTab === 'Users'     && <ManageUsers />}
         {activeTab === 'Chatbot'   && <ChatbotTab />}
       </main>
     </div>
