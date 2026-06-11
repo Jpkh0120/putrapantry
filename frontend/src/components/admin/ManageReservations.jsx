@@ -1,184 +1,253 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 
-export default function ManageUsers() {
-  const [students, setStudents] = useState([]);
+export default function ManageReservations() {
+  const [carts, setCarts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [processingCartId, setProcessingCartId] = useState(null);
 
   useEffect(() => {
-    fetchStudents();
+    fetchAllReservations();
   }, []);
 
-  async function fetchStudents() {
+  async function fetchAllReservations() {
     try {
       setLoading(true);
       setError('');
-      const res = await api.get('/api/admin/students');
-      setStudents(res.data);
-    } catch (err) {
-      setError('Failed to load student account registries.');
+      const res = await api.get('/api/reservation/admin/all');
+      const grouped = groupByStudent(res.data);
+      setCarts(grouped);
+    } catch (e) {
+      setError('Failed to load student reservations.');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleToggleVerify(uid, currentIsVerified) {
-    const nextVerifyState = !currentIsVerified;
-    if (!window.confirm(`Change student verification status to ${nextVerifyState ? 'VERIFIED' : 'PENDING'}?`)) return;
+  function groupByStudent(flatReservations) {
+    const map = {};
 
+    flatReservations.forEach(resItem => {
+      if (!resItem.reservedAt) return;
+
+      const dateObj = new Date(resItem.reservedAt);
+      dateObj.setSeconds(0);
+      dateObj.setMilliseconds(0);
+      const isoMinuteString = dateObj.toISOString();
+
+      const groupKey = `${resItem.studentName || resItem.studentId}_${isoMinuteString}`;
+
+      if (!map[groupKey]) {
+        map[groupKey] = {
+          reservedAt: isoMinuteString,
+          studentName: resItem.studentName || 'Unknown Student',
+          studentId: resItem.studentId,
+          cartId: resItem.id,
+          status: resItem.status,
+          items: []
+        };
+      }
+
+      map[groupKey].items.push({
+        id: resItem.id,
+        itemName: resItem.item || 'Unknown Item',
+        quantity: resItem.quantity,
+        itemStatus: resItem.status
+      });
+    });
+
+    return Object.values(map).sort((a, b) => new Date(a.reservedAt) - new Date(b.reservedAt));
+  }
+
+  async function handleApproveCart(cart) {
+    if (!window.confirm(`Approve all items for ${cart.studentName}?`)) return;
+    setProcessingCartId(cart.reservedAt);
     try {
-      await api.put(`/api/admin/verify/${uid}`, { isVerified: nextVerifyState });
-      alert('Verification status updated successfully!');
-      fetchStudents(); 
-    } catch (err) {
-      alert('Failed to update student verification status.');
+      await Promise.all(
+        cart.items
+          .filter(i => i.itemStatus === 'pending')
+          .map(i => api.put(`/api/reservation/approve/${i.id}`))
+      );
+      alert('Cart approved!');
+      await fetchAllReservations();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to approve.');
+    } finally {
+      setProcessingCartId(null);
     }
   }
 
-  async function handleToggleSuspend(uid, currentStatus) {
-    const isCurrentlySuspended = currentStatus === 'suspended';
-    const nextSuspendState = !isCurrentlySuspended;
-    
-    const confirmMessage = nextSuspendState 
-      ? 'Are you sure you want to SUSPEND this student? They will be blocked from logging in.' 
-      : 'Are you sure you want to REACTIVATE this student account?';
-
-    if (!window.confirm(confirmMessage)) return;
-
-    try {
-      await api.put(`/api/admin/suspend/${uid}`, { isSuspended: nextSuspendState });
-      alert(nextSuspendState ? 'Account suspended successfully!' : 'Account reactivated successfully!');
-      fetchStudents();
-    } catch (err) {
-      alert('Failed to modify account suspension state.');
-    }
-  }
-
-  async function handleDeleteStudent(uid) {
-    if (!window.confirm('CRITICAL ACTION: Permanently delete this student from both authentication credentials and database profiles? This cannot be undone.')) return;
-
-    try {
-      await api.delete(`/api/admin/delete/${uid}`);
-      alert('Student profile successfully purged from system registries.');
-      fetchStudents();
-    } catch (err) {
-      alert('Failed to completely delete user account.');
-    }
-  }
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading reservations...</div>;
+  if (error)   return <div style={{ padding: '20px', color: 'red' }}>{error}</div>;
 
   return (
-    <div style={{ maxWidth: '950px', margin: '30px auto', padding: '20px', fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: '750px', margin: '0 auto', padding: '10px' }}>
+
+      {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
-          <h2 style={{ margin: 0, color: '#1b5e20' }}>User Account Management</h2>
-          <p style={{ margin: '4px 0 0 0', color: '#666', fontSize: '0.9rem' }}>Verify, suspend, reactivate, or delete student profiles.</p>
-        </div>
-        <button 
-          onClick={fetchStudents} 
-          disabled={loading}
-          style={{ padding: '10px 16px', background: '#fff', border: '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}
+        <h2 style={{ margin: 0 }}>📋 Student Pickup Approvals</h2>
+        <button
+          onClick={fetchAllReservations}
+          style={{ background: '#fff', border: '1px solid #ccc', borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
         >
-          🔄 Refresh Roster
+          🔄 Refresh List
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding: '12px', background: '#ffebee', color: '#c62828', borderRadius: '6px', marginBottom: '20px', fontWeight: '500' }}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#666', fontWeight: '500' }}>Loading student account profiles...</div>
-      ) : students.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '50px', border: '2px dashed #ccc', borderRadius: '8px', color: '#666' }}>
-          No registered student accounts found in the system.
+      {/* EMPTY STATE */}
+      {carts.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '50px 20px', border: '2px dashed #ccc', borderRadius: '6px', color: '#666', background: '#fff' }}>
+          <p style={{ margin: 0, fontSize: '1rem', fontWeight: '500' }}>No pending reservations at the moment.</p>
         </div>
       ) : (
-        <div style={{ border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', fontSize: '0.9rem', color: '#475569' }}>
-                <th style={{ padding: '14px 16px' }}>Student Name</th>
-                <th style={{ padding: '14px 16px' }}>Email Address</th>
-                <th style={{ padding: '14px 16px' }}>Verification</th>
-                <th style={{ padding: '14px 16px' }}>Status</th>
-                <th style={{ padding: '14px 16px', textAlign: 'right' }}>Management Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => {
-                const isSuspended = student.status === 'suspended';
-                
-                return (
-                  <tr key={student.uid} style={{ borderBottom: '1px solid #edf2f7', fontSize: '0.95rem' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: '600', color: '#1a202c' }}>{student.name || '—'}</td>
-                    <td style={{ padding: '14px 16px', color: '#4a5568' }}>{student.email}</td>
-                    
-                    <td style={{ padding: '14px 16px' }}>
+        carts.map((cart) => {
+          const dateObj = cart.reservedAt ? new Date(cart.reservedAt) : null;
+          const displayDate = dateObj ? dateObj.toLocaleDateString() : '—';
+          const displayTime = dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+          const isProcessing = processingCartId === cart.reservedAt;
+
+          return (
+            <div
+              key={`${cart.studentId}_${cart.reservedAt}`}
+              style={{
+                border: '1px solid #1a1a1a',
+                borderRadius: '6px',
+                padding: '24px',
+                marginBottom: '32px',
+                background: '#fff',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+              }}
+            >
+              {/* METADATA HEADER */}
+              <div style={{ display: 'flex', gap: '32px', marginBottom: '20px', fontSize: '1.05rem', color: '#000', flexWrap: 'wrap' }}>
+                <div><strong>Student:</strong> {cart.studentName}</div>
+                <div><strong>Date:</strong> {displayDate}</div>
+                <div><strong>Time:</strong> {displayTime}</div>
+              </div>
+
+              {/* ITEMS BOX */}
+              <div style={{
+                border: '1px solid #000',
+                padding: '14px 20px',
+                borderRadius: '4px',
+                marginBottom: '24px',
+                background: '#fafafa'
+              }}>
+                {cart.items.map((item, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 0',
+                      borderBottom: idx !== cart.items.length - 1 ? '1px dashed #ddd' : 'none'
+                    }}
+                  >
+                    <div style={{ fontSize: '1.05rem', color: item.itemStatus === 'cancelled' ? '#aaa' : '#000' }}>
+                      {idx + 1}.{' '}
                       <span style={{
-                        padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold',
-                        background: student.isVerified ? '#e8f5e9' : '#fff3e0',
-                        color: student.isVerified ? '#2e7d32' : '#e65100',
-                        border: '1px solid'
+                        textDecoration: item.itemStatus === 'cancelled' ? 'line-through' : 'none',
+                        marginLeft: '6px',
+                        fontWeight: '500'
                       }}>
-                        {student.isVerified ? 'VERIFIED' : 'PENDING'}
+                        {item.itemName}
                       </span>
-                    </td>
+                      <span style={{ fontSize: '0.9rem', color: '#666', marginLeft: '8px' }}>(x{item.quantity})</span>
+                    </div>
 
-                    <td style={{ padding: '14px 16px' }}>
-                      <span style={{
-                        padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold',
-                        background: isSuspended ? '#ffebee' : '#e8f5e9',
-                        color: isSuspended ? '#c62828' : '#2e7d32'
-                      }}>
-                        {(student.status || 'active').toUpperCase()}
-                      </span>
-                    </td>
+                    {item.itemStatus === 'cancelled' ? (
+                      <span style={{ color: '#d32f2f', fontSize: '0.85rem', fontWeight: 'bold', background: '#ffebee', padding: '4px 8px', borderRadius: '4px' }}>[ Cancelled ]</span>
+                    ) : (
+                      <span style={{ color: '#2e7d32', fontSize: '0.85rem', fontWeight: 'bold', background: '#e8f5e9', padding: '4px 8px', borderRadius: '4px' }}>✓ Active</span>
+                    )}
+                  </div>
+                ))}
+              </div>
 
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => handleToggleVerify(student.uid, student.isVerified)}
-                          style={{
-                            padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', border: '1px solid #ccc', cursor: 'pointer',
-                            background: student.isVerified ? '#fff' : '#2e7d32',
-                            color: student.isVerified ? '#333' : '#fff',
-                          }}
-                        >
-                          {student.isVerified ? 'Unverify' : 'Verify'}
-                        </button>
+              {/* BOTTOM ACTION */}
+              {/* BOTTOM ACTION */}
+<div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
+  <div style={{ fontSize: '0.95rem' }}>
+    <strong>Status:</strong>{' '}
+    <span style={{
+      padding: '4px 12px',
+      borderRadius: '4px',
+      fontSize: '0.8rem',
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+      background: '#fff3e0',
+      color: '#e65100',
+      border: '1px solid'
+    }}>
+      PENDING
+    </span>
+  </div>
 
-                        <button
-                          onClick={() => handleToggleSuspend(student.uid, student.status)}
-                          style={{
-                            padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', border: 'none', cursor: 'pointer',
-                            background: isSuspended ? '#2e7d32' : '#e65100',
-                            color: '#fff',
-                          }}
-                        >
-                          {isSuspended ? 'Reactivate' : 'Suspend'}
-                        </button>
+  {/* REJECT BUTTON */}
+  <button
+    onClick={() => handleRejectCart(cart)}
+    disabled={isProcessing}
+    style={{
+      fontSize: '1.1rem',
+      fontWeight: 'bold',
+      color: '#c62828',
+      border: '2px solid #c62828',
+      padding: '6px 24px',
+      borderRadius: '4px',
+      background: '#fff',
+      textTransform: 'uppercase',
+      cursor: 'pointer',
+      letterSpacing: '0.5px'
+    }}
+  >
+    {isProcessing ? '...' : '✕ REJECT'}
+  </button>
 
-                        <button
-                          onClick={() => handleDeleteStudent(student.uid)}
-                          style={{
-                            padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', border: 'none', cursor: 'pointer',
-                            background: '#d32f2f', color: '#fff',
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+  {/* APPROVE BUTTON */}
+  <button
+    onClick={() => handleApproveCart(cart)}
+    disabled={isProcessing}
+    style={{
+      fontSize: '1.1rem',
+      fontWeight: 'bold',
+      color: '#fff',
+      border: '2px solid #1b5e20',
+      padding: '6px 24px',
+      borderRadius: '4px',
+      background: '#1b5e20',
+      textTransform: 'uppercase',
+      cursor: 'pointer',
+      letterSpacing: '0.5px'
+    }}
+  >
+    {isProcessing ? '...' : '✓ APPROVE'}
+  </button>
+</div>
+
+            </div>
+          );
+        })
       )}
     </div>
   );
+  // Add this alongside handleApproveCart
+async function handleRejectCart(cart) {
+  if (!window.confirm(`Reject all items for ${cart.studentName}? Stock will be returned.`)) return;
+  setProcessingCartId(cart.reservedAt);
+  try {
+    await Promise.all(
+      cart.items
+        .filter(i => i.itemStatus === 'pending')
+        .map(i => api.put(`/api/reservation/reject/${i.id}`))
+    );
+    alert('Cart rejected and stock returned.');
+    await fetchAllReservations();
+  } catch (e) {
+    alert(e.response?.data?.error || 'Failed to reject.');
+  } finally {
+    setProcessingCartId(null);
+  }
+}
 }

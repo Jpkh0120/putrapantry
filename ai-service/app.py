@@ -11,7 +11,12 @@ load_dotenv()
 initialize_firebase()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "http://localhost:5173",
+    "http://localhost:5174",
+    os.getenv("FRONTEND_URL", ""),          # set in Vercel env vars
+    os.getenv("BACKEND_URL", ""),           # set in Vercel env vars
+])
 
 # Register blueprints
 app.register_blueprint(ai_bp, url_prefix='/ai')
