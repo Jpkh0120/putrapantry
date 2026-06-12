@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "ai-service/app.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/ai/(.*)", "dest": "ai-service/app.py" },
+    { "src": "/ai", "dest": "ai-service/app.py" },
+    { "src": "/health", "dest": "ai-service/app.py" }
+  ]
+}
