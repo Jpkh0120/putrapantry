@@ -1,18 +1,26 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
 import './LoginPage.css';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail]     = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError]     = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [error, setError]         = useState('');
+  const [loading, setLoading]     = useState(false);
+
+  // Recovery state
+  const [showRecovery, setShowRecovery]       = useState(false);
+  const [recoveryEmail, setRecoveryEmail]     = useState('');
+  const [recoveryStatus, setRecoveryStatus]   = useState(''); // 'success' | 'error' | ''
+  const [recoveryMessage, setRecoveryMessage] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
 
   async function handleSubmit(e) {
-    e.preventDefault(); // Prevents browser page refresh
+    e.preventDefault();
 
     if (!email.trim() || !password) {
       setError('Please enter both your email and password.');
@@ -31,7 +39,6 @@ export default function LoginPage() {
       const code = err.code || err.message || '';
       let message = 'Invalid email or password.';
 
-      // 🌟 FIXED: Added explicit handler to intercept Firebase account suspension codes
       if (code.includes('user-disabled')) {
         message = '❌ Access Denied: This student user account has been suspended by an administrator.';
       } else if (code.includes('user-not-found') || code.includes('invalid-credential')) {
@@ -50,6 +57,55 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handlePasswordReset(e) {
+    e.preventDefault();
+
+    if (!recoveryEmail.trim()) {
+      setRecoveryStatus('error');
+      setRecoveryMessage('Please enter your email address.');
+      return;
+    }
+
+    setRecoveryLoading(true);
+    setRecoveryStatus('');
+    setRecoveryMessage('');
+
+    try {
+      const auth = getAuth();
+      await sendPasswordResetEmail(auth, recoveryEmail.trim());
+      setRecoveryStatus('success');
+      setRecoveryMessage('Reset link sent! Check your inbox (and spam folder).');
+    } catch (err) {
+      const code = err.code || '';
+      let message = 'Failed to send reset email. Please try again.';
+
+      if (code.includes('user-not-found') || code.includes('invalid-credential')) {
+        // Don't reveal whether the account exists — generic message for security
+        message = 'If that email is registered, a reset link has been sent.';
+        setRecoveryStatus('success'); // Treat as success to avoid account enumeration
+      } else if (code.includes('invalid-email')) {
+        message = 'Please enter a valid email address.';
+        setRecoveryStatus('error');
+      } else if (code.includes('too-many-requests')) {
+        message = 'Too many requests. Please wait a moment and try again.';
+        setRecoveryStatus('error');
+      } else {
+        setRecoveryStatus('error');
+      }
+
+      setRecoveryMessage(message);
+    } finally {
+      setRecoveryLoading(false);
+    }
+  }
+
+  function toggleRecovery() {
+    setShowRecovery(prev => !prev);
+    setRecoveryEmail('');
+    setRecoveryStatus('');
+    setRecoveryMessage('');
   }
 
   return (
@@ -75,7 +131,16 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label>Password</label>
+            <div className="label-row">
+              <label>Password</label>
+              <button
+                type="button"
+                className="forgot-link"
+                onClick={toggleRecovery}
+              >
+                {showRecovery ? 'Back to sign in' : 'Forgot password?'}
+              </button>
+            </div>
             <input
               type="password"
               value={password}
@@ -89,6 +154,43 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        {/* Password Recovery Panel */}
+        {showRecovery && (
+          <div className="recovery-panel">
+            <p className="recovery-desc">
+              Enter your registered email and we'll send you a reset link.
+            </p>
+
+            {recoveryMessage && (
+              <div className={`alert ${recoveryStatus === 'success' ? 'alert-success' : 'alert-error'}`}>
+                {recoveryMessage}
+              </div>
+            )}
+
+            {recoveryStatus !== 'success' && (
+              <form className="recovery-form" onSubmit={handlePasswordReset}>
+                <div className="form-group">
+                  <label>Registered Email</label>
+                  <input
+                    type="email"
+                    value={recoveryEmail}
+                    onChange={e => setRecoveryEmail(e.target.value)}
+                    placeholder="e.g. name@student.upm.edu.my"
+                    autoFocus
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="submit-btn submit-btn--secondary"
+                  disabled={recoveryLoading}
+                >
+                  {recoveryLoading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
 
         <div className="auth-footer">
           <p>Don't have an account yet? <Link to="/register">Register here</Link></p>
