@@ -350,4 +350,4 @@ function checkoutBtn(color, disabled) {
   };
 }
 const th = { padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#555', fontSize: '0.82rem' };
-const td = { padding: '8px 12px', borderBottom: '1px solid #f0f0f0', color: '#333' };
+const td = { padding: '8px 12px', borderBottom: '1px solid #f0f0f0', color: '#333' }; //fixed
