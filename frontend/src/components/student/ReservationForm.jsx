@@ -20,6 +20,20 @@ function getStartOfWeek() {
   return d.toISOString();
 }
 
+// 🌟 FIXED: Timezone-safe date check engine to defeat local browser time-shifting bugs
+function checkIsExpired(expiryDate) {
+  if (!expiryDate) return false;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Strip time parameters for accurate midnight comparison
+  
+  const [year, month, day] = expiryDate.slice(0, 10).split('-').map(Number);
+  const itemExpiry = new Date(year, month - 1, day);
+  itemExpiry.setHours(0, 0, 0, 0);
+  
+  return itemExpiry < today;
+}
+
 export default function ReservationForm({ preselectedItem, onSuccess }) {
   const { currentUser } = useAuth();
   const [items, setItems]           = useState([]);
@@ -76,11 +90,19 @@ export default function ReservationForm({ preselectedItem, onSuccess }) {
   // Auto-add preselected item to cart
   useEffect(() => {
     if (preselectedItem && !cart.find(c => c.id === preselectedItem.id)) {
+      // 🌟 EXTRA SAFETY LAYER: Prevent preselected item from bypassing checkout limits if expired
+      if (checkIsExpired(preselectedItem.expiryDate)) {
+        setFeedback({ msg: 'Cannot add preselected item: This item has expired.', type: 'error' });
+        return;
+      }
       setCart(prev => [...prev, preselectedItem]);
     }
   }, [preselectedItem]);
 
   function addToCart(item) {
+    if (checkIsExpired(item.expiryDate)) {
+      setFeedback({ msg: 'Cannot add to cart: This item has expired.', type: 'error' }); return;
+    }
     if (cart.find(c => c.id === item.id)) {
       setFeedback({ msg: 'Item already in cart.', type: 'info' }); return;
     }
@@ -244,27 +266,61 @@ export default function ReservationForm({ preselectedItem, onSuccess }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
             {items.map(item => {
               const inCart = !!cart.find(c => c.id === item.id);
-              const disabled = inCart || remainingToday <= 0;
+              const expired = checkIsExpired(item.expiryDate);
+              
+              // 🌟 STEP 1: Compound button disability tracking parameters
+              const disabled = inCart || remainingToday <= 0 || expired;
+
+              // 🌟 STEP 2: Configure color states and text responses dynamically
+              let buttonText = '+ Add to Cart';
+              let buttonBg = '#2e7d32';
+              let buttonColor = 'white';
+
+              if (expired) {
+                buttonText = '❌ Expired';
+                buttonBg = '#fca5a5';
+                buttonColor = '#b91c1c';
+              } else if (inCart) {
+                buttonText = '✓ In Cart';
+                buttonBg = '#a5d6a7';
+                buttonColor = '#1b5e20';
+              } else if (disabled) {
+                buttonBg = '#eee';
+                buttonColor = '#aaa';
+              }
+
               return (
                 <div key={item.id} style={{
-                  border: inCart ? '2px solid #2e7d32' : '1px solid #e8e8e8',
+                  border: expired ? '1px solid #fca5a5' : inCart ? '2px solid #2e7d32' : '1px solid #e8e8e8',
                   borderRadius: 8, padding: 14,
-                  background: inCart ? '#f1f8e9' : 'white',
+                  background: expired ? '#fff5f5' : inCart ? '#f1f8e9' : 'white',
+                  opacity: expired ? 0.8 : 1,
+                  transition: 'all 0.2s ease'
                 }}>
                   <div style={{ fontSize: '0.72rem', color: '#888', textTransform: 'uppercase', marginBottom: 4 }}>{item.category}</div>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>{item.itemName}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#888', marginBottom: 10 }}>Expires: {item.expiryDate?.slice(0, 10)}</div>
+                  
+                  {/* Highlight date row elements if expired */}
+                  <div style={{ 
+                    fontSize: '0.78rem', 
+                    color: expired ? '#b91c1c' : '#888', 
+                    fontWeight: expired ? '600' : '400',
+                    marginBottom: 10 
+                  }}>
+                    {expired ? `⚠️ Expired: ${item.expiryDate?.slice(0, 10)}` : `Expires: ${item.expiryDate?.slice(0, 10)}`}
+                  </div>
+
                   <button
                     onClick={() => addToCart(item)}
                     disabled={disabled}
                     style={{
                       width: '100%', padding: '6px 0', border: 'none', borderRadius: 6,
-                      background: inCart ? '#a5d6a7' : disabled ? '#eee' : '#2e7d32',
-                      color: inCart ? '#1b5e20' : disabled ? '#aaa' : 'white',
+                      background: buttonBg,
+                      color: buttonColor,
                       cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: 600,
                     }}
                   >
-                    {inCart ? '✓ In Cart' : '+ Add to Cart'}
+                    {buttonText}
                   </button>
                 </div>
               );

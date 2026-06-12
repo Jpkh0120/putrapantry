@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import StockView from '../components/student/StockView';
 import ReservationForm from '../components/student/ReservationForm';
@@ -16,23 +16,62 @@ export default function StudentDashboard() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [checking, setChecking] = useState(false); 
 
+  // Global inventory states for tracking marketplace data
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+
+  // Fetch the latest stock lists automatically when a verified student enters the shell
+  async function fetchMarketplaceStock() {
+    if (!isVerified) return;
+    setLoadingItems(true);
+    try {
+      const res = await api.get('/api/inventory');
+      
+      // 🌟 FRONTEND ONLY SAFETY FILTER: Identify and flag expired items before passing down
+      const processedItems = res.data.map(item => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let isExpired = false;
+        if (item.expiryDate) {
+          const [year, month, day] = item.expiryDate.slice(0, 10).split('-').map(Number);
+          const itemExpiry = new Date(year, month - 1, day);
+          itemExpiry.setHours(0, 0, 0, 0);
+          isExpired = itemExpiry < today;
+        }
+
+        return {
+          ...item,
+          isExpired // Appends explicit boolean safety flag to item payload matrix
+        };
+      });
+
+      setInventoryItems(processedItems);
+    } catch (err) {
+      console.error("Failed to extract active stock entries:", err);
+    } finally {
+      setLoadingItems(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchMarketplaceStock();
+  }, [isVerified, activeTab]);
+
   async function handleLogout() {
     try { await logout(); window.location.href = '/login'; }
     catch (e) { console.error(e); }
   }
 
-  // 🌟 UPDATED: Refactored to handle account suspension exceptions gracefully
   async function handleCheckStatus() {
     try {
       setChecking(true);
       
-      // 1. Force Firebase Auth to bypass cache. Throws an error instantly if account is disabled.
       const user = auth.currentUser;
       if (user) {
         await user.getIdToken(true);
       }
 
-      // 2. Request fresh profile validation object records from backend
       const res = await api.get('/api/auth/me');
       
       if (res.data && res.data.isVerified) {
@@ -45,7 +84,6 @@ export default function StudentDashboard() {
     } catch (err) {
       console.error('Error re-verifying status:', err);
       
-      // Check if the request failed due to user suspension
       const errorCode = err?.code || '';
       const errorMsg = err?.message || '';
       const isSuspended = 
@@ -55,11 +93,9 @@ export default function StudentDashboard() {
 
       if (isSuspended) {
         alert('❌ Access Denied: Your account has been suspended by an administrator. Please contact pantry management.');
-        // Clean up stale client states and boot out to login screen
         await logout();
         window.location.href = '/login';
       } else {
-        // Fallback for genuine network/server connectivity issues
         alert('Could not verify status. Please ensure the backend server is running.');
       }
     } finally {
@@ -72,7 +108,7 @@ export default function StudentDashboard() {
     setActiveTab('Reserve');
   }
 
-  // ENFORCE BUSINESS PRIVILEGES: Render the validation block wall if unverified
+  // Render verification barrier if account is not approved yet
   if (!isVerified) {
     return (
       <div className="dashboard" style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
@@ -152,8 +188,23 @@ export default function StudentDashboard() {
       </nav>
 
       <main className="dashboard-content">
-        {activeTab === 'Stock'   && <StockView onReserve={handleReserve} />}
-        {activeTab === 'Reserve' && <ReservationForm preselectedItem={selectedItem} onSuccess={() => setActiveTab('History')} />}
+        {activeTab === 'Stock' && (
+          loadingItems ? (
+            <div className="admin-loading" style={{ textAlign: 'center', padding: '40px' }}>Loading available food stocks...</div>
+          ) : (
+            /* 🌟 FIXED: Reference locally scoped fetchMarketplaceStock handler */
+            <StockView 
+              items={inventoryItems} 
+              onReserve={handleReserve} 
+              refreshStock={fetchMarketplaceStock}
+            />
+          )
+        )}
+        
+        {activeTab === 'Reserve' && (
+          <ReservationForm preselectedItem={selectedItem} onSuccess={() => setActiveTab('History')} />
+        )}
+        
         {activeTab === 'History' && <PickupHistory />}
         {activeTab === 'Chatbot' && <Chatbot />}
       </main>
