@@ -1,5 +1,8 @@
 import os
 import sys
+from datetime import datetime
+
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
@@ -27,17 +30,14 @@ def _chat(system_prompt: str, user_prompt: str) -> str:
             max_tokens=512,
             temperature=0.7,
         )
-        # Debug: print response structure for troubleshooting
         try:
             print('DEBUG: groq response:', repr(response))
         except Exception:
             pass
 
-        # Attempt to read common response fields safely
         try:
             return response.choices[0].message.content.strip()
         except Exception:
-            # Fallback: try alternative shapes
             try:
                 return response['choices'][0]['message']['content'].strip()
             except Exception as e:
@@ -63,10 +63,17 @@ def _get_current_stock_summary():
 
 def chatbot_query(query: str, student_id: str = None, role: str = 'student'):
     stock_summary = _get_current_stock_summary()
+    
+    # 🌟 BACKEND ANCHOR: Automatically generate dynamic time context variables
+    # This formats as e.g. "June 12, 2026" matching your presentation runtime
+    today_str = datetime.now().strftime("%B %d, %Y")
 
     if role == 'admin':
         system_prompt = (
             "You are a smart inventory advisor for PutraPantry food bank at UPM. "
+            f"CRITICAL SYSTEM METRIC: Today's current date is explicitly {today_str} (Malaysia Time). "
+            "Use this date as your baseline absolute constraint. Compare it directly with the 'expires' strings "
+            "provided in the dataset to evaluate if items are already expired or running out of shelf life. "
             "Help the admin make informed restocking and inventory decisions. "
             "Highlight low stock items, expiring items, and category gaps. "
             "Be data-driven, concise, and actionable. "
@@ -78,10 +85,12 @@ def chatbot_query(query: str, student_id: str = None, role: str = 'student'):
         )
     else:
         system_prompt = (
-            "You are PutraPantry Assistant, a helpful food bank chatbot at UPM "
-            "(Universiti Putra Malaysia). Your role is to help university students "
-            "find suitable food from the food bank. Be friendly, concise, and helpful. "
-            "Only recommend items that are currently in stock. "
+            "You are PutraPantry Assistant, a helpful food bank chatbot at UPM (Universiti Putra Malaysia). "
+            f"CRITICAL SYSTEM METRIC: Today's current date is explicitly {today_str} (Malaysia Time). "
+            "Use this date as your baseline absolute constraint. If an item's expiration date is past this date, "
+            "it is strictly EXPIRED and unsafe. Do not recommend it. "
+            "Your role is to help university students find suitable food from the food bank. Be friendly, concise, and helpful. "
+            "Only recommend items that are currently in stock and NOT expired. "
             "Respect any dietary restrictions or preferences the student mentions. "
             "Keep responses under 150 words."
         )
@@ -102,9 +111,12 @@ def chatbot_query(query: str, student_id: str = None, role: str = 'student'):
 
 def get_restock_recommendations():
     stock_summary = _get_current_stock_summary()
+    today_str = datetime.now().strftime("%B %d, %Y")
 
     system_prompt = (
         "You are a food bank inventory advisor for a university food bank. "
+        f"CRITICAL SYSTEM METRIC: Today's date is explicitly {today_str} (Malaysia Time). "
+        "Use this exact timeline to evaluate shelf life parameters precisely. "
         "Provide concise, actionable restocking recommendations for the admin. "
         "Focus on: items running low, items expiring soon, and category gaps. "
         "Format as 3-5 bullet points. Be specific and practical. "

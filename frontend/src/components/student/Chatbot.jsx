@@ -32,16 +32,28 @@ export default function Chatbot() {
     const query = text ?? input.trim();
     if (!query || loading) return;
 
+    // 🌟 STEP 1: Render the clean, natural query to the frontend chat UI log
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: query }]);
     setLoading(true);
+
+    // 🌟 STEP 2: Dynamically pull the exact current system date matching your device clock
+    const todayStr = new Date().toLocaleDateString('en-MY', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'Asia/Kuala_Lumpur'
+    });
+
+    // 🌟 STEP 3: Enforce the hidden date anchor wrapper context on EVERY single outbound api turn
+    const hiddenContextPayload = `[System Time Context: Current absolute date is strictly ${todayStr}. Use this exact date as your baseline constraint for checking if items are expired or expiring soon when processing the following question. Do not contradict yourself.]\nUser Question: ${query}`;
 
     try {
       const res = await fetch(`${AI_BASE_URL}/ai/chatbot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query,
+          query: hiddenContextPayload, // Outbound payload keeps the LLM contextually anchored
           studentId: currentUser?.uid ?? null,
         }),
       });
